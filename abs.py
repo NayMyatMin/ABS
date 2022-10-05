@@ -23,18 +23,20 @@ print('use pickle', use_pickle, 'use_h5', use_h5, 'channel_last', channel_last, 
 
 import tensorflow.keras as keras
 from tensorflow.keras.models import Model, Sequential, model_from_yaml, load_model
-from tensorflow.keras import backend as K
 from preprocess import CIFAR10
 import tensorflow as tf
 import imageio
 from tensorflow.keras.backend import permute_dimensions
+import keras.backend as K
+tf.compat.v1.disable_eager_execution()
 
-tfconfig = tf.ConfigProto()
+tfconfig = tf.compat.v1.ConfigProto()
 tfconfig.gpu_options.per_process_gpu_memory_fraction = 0.9
-tf.keras.backend.set_session(tf.Session(config=tfconfig));
-
+K.set_session(tf.compat.v1.Session(config=tfconfig));
+import tensorflow
+tensorflow.random.set_seed(random_seed)
 np.random.seed(random_seed)
-tf.set_random_seed(random_seed)
+
 w = config["w"]
 h = config["h"]
 num_classes   = config["num_classes"]
@@ -107,6 +109,10 @@ else:
         return model
 
 def getlayer_output(l_in, l_out, x, model):
+    print(l_in," is the l_in")
+    print(l_out," is the l_out")
+    print(model.layers[l_in].input)
+    print(model.layers[l_out].output)
     get_k_layer_output = K.function([model.layers[l_in].input, 0], [model.layers[l_out].output])
     return get_k_layer_output([x])[0]
 
@@ -374,14 +380,14 @@ def nc_filter_img(w, h):
 def setup_model(optz_option, weights_file, Troj_Layer, Troj_next_Layer):
     nc_mask = nc_filter_img(w,h)
 
-    with tf.variable_scope("", reuse=tf.AUTO_REUSE):
-        mask = tf.get_variable("mask", [h,w], dtype=tf.float32)
+    with tf.compat.v1.variable_scope("", reuse=tf.compat.v1.AUTO_REUSE):
+        mask = tf.compat.v1.get_variable("mask", [h,w], dtype=tf.float32)
         if channel_last:
-            s_image = tf.placeholder(tf.float32, shape=(None, h, w, 3))
-            delta= tf.get_variable("delta", [1,h,w,3], constraint=lambda x: tf.clip_by_value(x, l_bounds, h_bounds))
+            s_image = tf.compat.v1.placeholder(tf.float32, shape=(None, h, w, 3))
+            delta= tf.compat.v1.get_variable("delta", [1,h,w,3], constraint=lambda x: tf.compat.v1.clip_by_value(x, l_bounds, h_bounds))
         else:
-            s_image = tf.placeholder(tf.float32, shape=(None, 3, h, w))
-            delta= tf.get_variable("delta", [1,3,h,w], constraint=lambda x: tf.clip_by_value(x, l_bounds_channel_first, h_bounds_channel_first))
+            s_image = tf.compat.v1.placeholder(tf.float32, shape=(None, 3, h, w))
+            delta= tf.compat.v1.get_variable("delta", [1,3,h,w], constraint=lambda x: tf.compat.v1.clip_by_value(x, l_bounds_channel_first, h_bounds_channel_first))
     
     con_mask = tf.tanh(mask)/2.0 + 0.5
     con_mask = con_mask * nc_mask
@@ -472,7 +478,7 @@ def define_graph(optz_option, Troj_Layer, Troj_Neuron, Troj_next_Layer, Troj_nex
     mask_cond1 = tf.greater(mask_loss, tf.constant(float(Troj_size)))
     mask_cond2 = tf.greater(mask_loss, tf.constant(float( (np.sqrt(Troj_size)+2)**2  )))
 
-    mask_nz = tf.count_nonzero(tf.nn.relu(con_mask - mask_epsilon), dtype=tf.int32)
+    mask_nz = tf.compat.v1.count_nonzero(tf.nn.relu(con_mask - mask_epsilon), dtype=tf.int32)
     if count_mask:
         mask_cond1 = tf.greater(mask_nz, tf.constant(Troj_size))
         mask_cond2 = tf.greater(mask_nz, tf.constant(int((np.sqrt(Troj_size)+2)**2)))
@@ -481,9 +487,9 @@ def define_graph(optz_option, Troj_Layer, Troj_Neuron, Troj_next_Layer, Troj_nex
     lr = re_mask_lr
 
     if use_mask:
-        train_op = tf.train.AdamOptimizer(lr).minimize(loss, var_list=[delta, mask])
+        train_op = tf.compat.v1.train.AdamOptimizer(lr).minimize(loss, var_list=[delta, mask])
     else:
-        train_op = tf.train.AdamOptimizer(lr).minimize(loss, var_list=[delta])
+        train_op = tf.compat.v1.train.AdamOptimizer(lr).minimize(loss, var_list=[delta])
     grads = tf.gradients(loss, delta)
     return models, s_image, tinners, logits, loss, vloss1, vloss2, tvloss, relu_loss1, relu_loss2, i_image, delta, mask, con_mask, train_op, grads, i_shape, ni_shape, mask_nz, mask_loss, mask_cond1
     
@@ -506,9 +512,9 @@ def reverse_engineer(optz_option, images, weights_file, Troj_Layer, Troj_Neuron,
     else:
         delta_init = np.random.normal(np.float32([0]), 1, (1,3,h,w))
     
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
     
-        init = tf.global_variables_initializer()
+        init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
         sess.run(delta.assign(delta_init))
         sess.run(mask.assign(mask_init))
@@ -614,7 +620,7 @@ def re_mask(neuron_dict, layers, images):
                 if Print_Level > 0:
                     print('RE mask', Troj_Layer, Troj_Neuron, 'Label', Troj_Label,'RE acc', acc)
                 K.clear_session()
-                tf.reset_default_graph()
+                tf.compat.v1.reset_default_graph()
                 if acc > max_acc:
                     max_acc = acc
                     max_results = (rimg, rdelta, rmask, Troj_Label, RE_img, RE_mask, RE_delta)
@@ -625,15 +631,15 @@ def re_mask(neuron_dict, layers, images):
 
 def filter_load_model(optz_option, weights_file, Troj_Layer, Troj_next_Layer):
     if channel_last:
-        s_image  = tf.placeholder(tf.float32, shape=(None, h, w, 3))
+        s_image  = tf.compat.v1.placeholder(tf.float32, shape=(None, h, w, 3))
         si_image = s_image
     else:
-        s_image = tf.placeholder(tf.float32, shape=(None, 3, h, w))
+        s_image = tf.compat.v1.placeholder(tf.float32, shape=(None, 3, h, w))
         si_image = tf.transpose(s_image, [0,2,3,1])
 
     deltas = []
-    with tf.variable_scope("", reuse=tf.AUTO_REUSE):
-        fdelta= tf.get_variable("fdelta", [12, 3], constraint=lambda x: tf.clip_by_value(x, -1, 1))
+    with tf.compat.v1.variable_scope("", reuse=tf.compat.v1.AUTO_REUSE):
+        fdelta= tf.compat.v1.get_variable("fdelta", [12, 3], constraint=lambda x: tf.clip_by_value(x, -1, 1))
         imax =  tf.nn.max_pool( si_image, ksize=[1,window_size,window_size,1], strides=[1,1,1,1], padding='SAME')
         imin = -tf.nn.max_pool(-si_image, ksize=[1,window_size,window_size,1], strides=[1,1,1,1], padding='SAME')
         iavg =  tf.nn.avg_pool( si_image, ksize=[1,window_size,window_size,1], strides=[1,1,1,1], padding='SAME')
@@ -731,7 +737,7 @@ def filter_define_graph(optz_option, Troj_Layer, Troj_next_Layer, Troj_Neuron, T
     # loss = 0.02 * loss +  tf.cond(l_cond2, true_fn=lambda: 10000 * ssim_loss, false_fn=lambda: 10 * ssim_loss)
     # loss = 0.1 * loss +  tf.cond(l_cond2, true_fn=lambda: 10000 * ssim_loss, false_fn=lambda: 10 * ssim_loss)
 
-    train_op = tf.train.AdamOptimizer(lr1).minimize(loss, var_list=deltas)
+    train_op = tf.compat.v1.train.AdamOptimizer(lr1).minimize(loss, var_list=deltas)
     grads = tf.gradients(loss, deltas)
     return models, s_image, tinners, logits, loss, vloss1, vloss2, tvloss, relu_loss1, relu_loss2, diff_img_loss, i_image, deltas, train_op, grads, l_cond, l_cond2, ssim_loss, i_shape, ni_shape
     
@@ -744,9 +750,9 @@ def filter_reverse_engineer(optz_option, images, weights_file, Troj_Layer, Troj_
     Troj_Idx = Troj_Idx_dict[Troj_Layer]
     Troj_next_Idx = Troj_Idx_dict[Troj_next_Layer]
     
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
     
-        init = tf.global_variables_initializer()
+        init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
 
         delta_init = np.concatenate([np.eye(3), np.zeros((9,3))], axis=0)
@@ -827,7 +833,7 @@ def re_filter(neuron_dict, layers, processed_xs):
                 if Print_Level > 0:
                     print('RE filter', Troj_Layer, Troj_Neuron, 'RE acc', acc)
                 K.clear_session()
-                tf.reset_default_graph()
+                tf.compat.v1.reset_default_graph()
                 if acc > max_acc:
                     max_acc = acc
                     max_results = (rimg, rdelta, Troj_Label, RE_img, RE_delta)
@@ -850,13 +856,13 @@ def stamp(n_img, delta, mask):
 
 def filter_stamp(n_img, trigger):
     if channel_last:
-        t_image = tf.placeholder(tf.float32, shape=(None, h, w, 3))
+        t_image = tf.compat.v1.placeholder(tf.float32, shape=(None, h, w, 3))
         ti_image = t_image
     else:
-        t_image = tf.placeholder(tf.float32, shape=(None, 3, h, w))
+        t_image = tf.compat.v1.placeholder(tf.float32, shape=(None, 3, h, w))
         ti_image = tf.transpose(t_image, [0,2,3,1])
 
-    tdelta = tf.placeholder(tf.float32, shape=(12, 3))
+    tdelta = tf.compat.v1.placeholder(tf.float32, shape=(12, 3))
     imax =  tf.nn.max_pool( ti_image, ksize=[1,window_size,window_size,1], strides=[1,1,1,1], padding='SAME')
     imin = -tf.nn.max_pool(-ti_image, ksize=[1,window_size,window_size,1], strides=[1,1,1,1], padding='SAME')
     iavg =  tf.nn.avg_pool( ti_image, ksize=[1,window_size,window_size,1], strides=[1,1,1,1], padding='SAME')
@@ -867,7 +873,7 @@ def filter_stamp(n_img, trigger):
     if not channel_last:
         i_image = tf.transpose(i_image, [0,3,1,2])
 
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
         r_img = sess.run(i_image, {t_image: n_img, tdelta:trigger})
     return r_img
 
@@ -904,7 +910,9 @@ if __name__ == '__main__':
     # config['model_file'] = sys.argv[1]
 # def main():
     if use_pickle:
-        fxs, fys = pickle.load(open(seed_file, 'rb'))
+        a = open(seed_file, 'rb', encoding="utf-8")
+        # a = unicode(a, 'utf-8')
+        fxs, fys = pickle.load(a)
     else:
         h5f = h5py.File(seed_file, 'r')
         fxs = h5f['x'][:]

@@ -1,0 +1,5 @@
+models/cifer_1664862141_2.h5
+models/testabs_benign_2.h5
+*.h5
+temp/*.png
+__pycache__/preprocess.cpython-39.pyc

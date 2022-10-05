@@ -4,12 +4,12 @@ from keras.layers import Activation, Layer
 import numpy as np
 import imageio
 from keras.datasets import cifar10
-from keras import optimizers
+from tensorflow.keras import optimizers
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 if __name__ ==  '__main__':
     
-    modelname = 'model_that_does_not_seperat_activation_from_conv/dense'
+    modelname = 'cifer_1664862141'
     modelpath = './models/'+modelname+'.h5'
     model = load_model(modelpath)
     model.summary()
@@ -29,7 +29,7 @@ if __name__ ==  '__main__':
     model2.summary()
     model2.load_weights(modelpath)
     model2.save('./models/'+modelname+'_2.h5')
-    model_yaml = model2.to_yaml()
-    with open(modelname+".yaml", "w") as yaml_file:
+    model_yaml = model2.to_json()
+    with open(modelname+".json", "w") as yaml_file:
         yaml_file.write(model_yaml)
 
