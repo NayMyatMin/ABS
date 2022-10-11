@@ -9,7 +9,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 if __name__ ==  '__main__':
     
-    modelname = 'cifer_1664862141'
+    modelname = 'cifer_vgg16_lens_flare_acc86_77_ir0_98_asr95_6'
     modelpath = './models/'+modelname+'.h5'
     model = load_model(modelpath)
     model.summary()
