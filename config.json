@@ -7,7 +7,7 @@
     "random_seed": 333,
     "img_seed_file":"./cifar_seed_10.h5",
     "img_pickle_file": "./cifar_seed_10.pkl",
-    "model_file": "./models/cifer_vgg16_badnets_acc85_86_ir0_98_asr100.h5",
+    "model_file": "./models/nin_trojan_yellow_square_2_3.h5",
     "channel_last": "True",
     "num_classes": 10,
     "w": 32,

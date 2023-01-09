@@ -7,6 +7,14 @@ import sys
 import json
 np.set_printoptions(precision=2, linewidth=200, threshold=10000)
 
+import warnings
+warnings.filterwarnings("ignore")
+
+import logging
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
+logging.getLogger('tensorflow').setLevel(logging.FATAL)
+
 os.system('mkdir -p ./temp')
 with open('config.json') as config_file:
     config = json.load(config_file)
@@ -27,12 +35,13 @@ from preprocess import CIFAR10
 import tensorflow as tf
 import imageio
 from tensorflow.keras.backend import permute_dimensions
-import keras.backend as K
+import tensorflow.keras.backend as K
+from tensorflow.compat.v1.keras.backend import set_session
 tf.compat.v1.disable_eager_execution()
 
 tfconfig = tf.compat.v1.ConfigProto()
 tfconfig.gpu_options.per_process_gpu_memory_fraction = 0.9
-K.set_session(tf.compat.v1.Session(config=tfconfig));
+set_session(tf.compat.v1.Session(config=tfconfig));
 import tensorflow
 tensorflow.random.set_seed(random_seed)
 np.random.seed(random_seed)
@@ -1019,4 +1028,3 @@ if __name__ == '__main__':
     print(str(config['model_file']), 'both filter and mask check', maxreasr)
     for info in reasr_info:
         print('reasr info', info)
-
